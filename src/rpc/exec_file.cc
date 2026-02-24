@@ -10,10 +10,78 @@
 #include <sys/wait.h>
 #include <torrent/utils/thread.h>
 
+#ifdef __linux__
+# include <sys/syscall.h>
+#endif
+
 #include "exec_file.h"
 #include "parse.h"
 
 namespace rpc {
+
+#ifdef __linux__
+
+struct linux_dirent {
+  unsigned long  d_ino;
+  unsigned long  d_off;
+  unsigned short d_reclen;
+  char           d_name[];
+};
+
+static constexpr int kDirBufSize = 1024;
+
+// Use /proc/self/fd + getdents to close all fds above stderr.
+// This avoids iterating up to RLIMIT_NOFILE (can be 163840+)
+// which is extremely slow when many fds are not open.
+static void
+close_all_fds() {
+  char dir_buf[kDirBufSize];
+  int  dir_fd;
+
+  dir_fd = open("/proc/self/fd", O_RDONLY | O_DIRECTORY);
+
+  if (dir_fd != -1) {
+    for (;;) {
+      int r = syscall(SYS_getdents, dir_fd, dir_buf, kDirBufSize);
+
+      if (r <= 0)
+        break;
+
+      for (int pos = 0; pos < r;) {
+        auto* entry = reinterpret_cast<linux_dirent*>(dir_buf + pos);
+        pos += entry->d_reclen;
+
+        // Parse fd number from d_name (atoi is not async-signal-safe).
+        const char* s = entry->d_name;
+        if (*s < '0' || *s > '9')
+          continue;
+
+        int fd = 0;
+        for (; *s >= '0' && *s <= '9'; s++)
+          fd = fd * 10 + (*s - '0');
+
+        if (!*s && fd > 2 && fd != dir_fd)
+          ::close(fd);
+      }
+    }
+
+    ::close(dir_fd);
+  } else {
+    // Fallback: brute-force close.
+    for (int i = 3, last = sysconf(_SC_OPEN_MAX); i != last; i++)
+      ::close(i);
+  }
+}
+
+#else
+
+static void
+close_all_fds() {
+  for (int i = 3, last = sysconf(_SC_OPEN_MAX); i != last; i++)
+    ::close(i);
+}
+
+#endif
 
 // TODO: Access fd through torrent logging?
 
@@ -86,9 +154,8 @@ ExecFile::execute(const char* file, char* const* argv, int flags) {
     else
       ::close(2);
 
-    // Close all fd's.
-    for (int i = 3, last = sysconf(_SC_OPEN_MAX); i != last; i++)
-      ::close(i);
+    // Close all fds above stderr.
+    close_all_fds();
 
     result = execvp(file, argv);
 
