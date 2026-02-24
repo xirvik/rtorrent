@@ -26,7 +26,6 @@ CommandMap::insert(const key_type& key, int flags, const char* parm, const char*
   if (itr != base_type::end())
     throw torrent::internal_error("CommandMap::insert(...) tried to insert an already existing key.");
 
-  // TODO: This is not honoring the public_xmlrpc flags!!!
   if (rpc::rpc.is_handlers_initialized() && (flags & flag_public_rpc))
     rpc::rpc.insert_command(key.c_str(), parm, doc);
 
@@ -41,9 +40,6 @@ CommandMap::erase(iterator itr) {
   // TODO: Remove the redirects instead...
   if (itr->second.m_flags & flag_has_redirects)
     throw torrent::input_error("Can't erase a command that has redirects.");
-
-//   if (!(itr->second.m_flags & flag_dont_delete))
-//     delete itr->second.m_variable;
 
   base_type::erase(itr);
 }
@@ -67,7 +63,6 @@ CommandMap::create_redirect(const key_type& key_new, const key_type& key_dest, i
 
   flags |= dest_itr->second.m_flags & ~(flag_has_redirects | flag_public_rpc);
 
-  // TODO: This is not honoring the public_xmlrpc flags!!!
   if (rpc::rpc.is_handlers_initialized() && (flags & flag_public_rpc))
     rpc::rpc.insert_command(key_new.c_str(), dest_itr->second.m_parm, dest_itr->second.m_doc);
 
@@ -93,6 +88,9 @@ CommandMap::call_catch(const key_type& key, const target_type& target, const map
 
 const CommandMap::mapped_type
 CommandMap::call_command(const key_type& key, const mapped_type& arg, const target_type& target) {
+  if (!rpc::RpcManager::is_command_allowed(key))
+    throw torrent::input_error("Command \"" + std::string(key) + "\" is not allowed for untrusted connections.");
+
   iterator itr = base_type::find(key);
 
   if (itr == base_type::end())
@@ -103,6 +101,9 @@ CommandMap::call_command(const key_type& key, const mapped_type& arg, const targ
 
 const CommandMap::mapped_type
 CommandMap::call_command(iterator itr, const mapped_type& arg, const target_type& target) {
+  if (!rpc::RpcManager::is_command_allowed(itr->first))
+    throw torrent::input_error("Command \"" + std::string(itr->first) + "\" is not allowed for untrusted connections.");
+
   return itr->second.m_anySlot(&itr->second.m_variable, target, arg);
 }
 

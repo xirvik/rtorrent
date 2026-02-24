@@ -1,6 +1,9 @@
 #include "config.h"
 
+#include <algorithm>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include <torrent/exceptions.h>
 
@@ -12,6 +15,97 @@ namespace rpc {
 CommandMap commands;
 RpcManager rpc;
 ExecFile   execFile;
+
+// Trusted/untrusted XMLRPC connection model.
+//
+// Commands that are dangerous when accessible from a web UI are blocked
+// for untrusted connections. The SCGI layer sets the trust state based
+// on the presence of the UNTRUSTED_CONNECTION header.
+
+thread_local bool RpcManager::m_trusted = true;
+
+static const std::vector<std::string> untrusted_blocked_commands = {
+  "execute",
+  "execute.capture",
+  "execute.capture_nothrow",
+  "execute.nothrow",
+  "execute.nothrow.bg",
+  "execute.raw",
+  "execute.raw.bg",
+  "execute.raw_nothrow",
+  "execute.raw_nothrow.bg",
+  "execute.throw",
+  "execute.throw.bg",
+  "execute2",
+  "method.insert",
+  "method.redirect",
+  "method.set",
+  "method.set_key",
+  "schedule",
+  "schedule2",
+  "schedule_remove",
+  "schedule_remove2",
+  "import",
+  "try_import",
+  "log.open_file",
+  "log.open_gz_file",
+  "log.open_file_pid",
+  "log.open_gz_file_pid",
+  "log.append_file",
+  "log.append_gz_file",
+  "log.add_output",
+  "log.execute",
+  "log.vmmap.dump",
+  "log.xmlrpc",
+  "log.libtorrent",
+  "file.append",
+  // Deprecated command names
+  "execute_capture",
+  "execute_capture_nothrow",
+  "execute_nothrow",
+  "execute_nothrow_bg",
+  "execute_raw",
+  "execute_raw_bg",
+  "execute_raw_nothrow",
+  "execute_raw_nothrow_bg",
+  "execute_throw",
+  "execute_throw_bg",
+  "system.method.insert",
+  "system.method.redirect",
+  "system.method.set",
+  "system.method.set_key",
+  "on_insert",
+  "on_erase",
+  "on_open",
+  "on_close",
+  "on_start",
+  "on_stop",
+  "on_hash_queued",
+  "on_hash_removed",
+  "on_hash_done",
+  "on_finished"
+};
+
+bool
+RpcManager::is_command_allowed(const std::string& command_name) {
+  if (m_trusted)
+    return true;
+
+  return std::find(untrusted_blocked_commands.begin(), untrusted_blocked_commands.end(),
+                   command_name) == untrusted_blocked_commands.end();
+}
+
+bool
+RpcManager::set_trusted(bool trusted) {
+  bool prev = m_trusted;
+  m_trusted = trusted;
+  return prev;
+}
+
+bool
+RpcManager::is_trusted() {
+  return m_trusted;
+}
 
 void
 RpcManager::object_to_target(const torrent::Object& obj, int call_flags, rpc::target_type* target, std::function<void()>* deleter) {

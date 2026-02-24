@@ -4,6 +4,7 @@
 
 #include <rak/error_number.h>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -17,6 +18,7 @@
 #include "globals.h"
 #include "scgi.h"
 #include "rpc/parse_commands.h"
+#include "rpc/rpc_manager.h"
 #include "utils/socket_fd.h"
 
 namespace rpc {
@@ -29,6 +31,7 @@ SCgiTask::open(SCgi* parent, int fd) {
   m_buffer_size = default_buffer_size;
   m_position    = m_buffer;
   m_body        = NULL;
+  m_trusted     = true;
 
   torrent::this_thread::poll()->open(this);
   torrent::this_thread::poll()->insert_read(this);
@@ -96,6 +99,9 @@ SCgiTask::event_read() {
     size_t      content_length = 0;
     const char* header_end     = current + header_size;
 
+    // Assume trusted until we find the UNTRUSTED_CONNECTION header.
+    m_trusted = true;
+
     // Parse out the null-terminated header keys and values, with
     // checks to ensure it doesn't scan beyond the limits of the
     // header
@@ -126,6 +132,8 @@ SCgiTask::event_read() {
           goto event_read_failed;
       } else if (strcmp(key, "CONTENT_TYPE") == 0) {
         content_type = value;
+      } else if (strcmp(key, "UNTRUSTED_CONNECTION") == 0 && strcmp(value, "1") == 0) {
+        m_trusted = false;
       }
     }
 
@@ -167,8 +175,6 @@ SCgiTask::event_read() {
   if (m_parent->log_fd() >= 0) {
     [[maybe_unused]] int result;
 
-    // Clean up logging, this is just plain ugly...
-    //    write(m_logFd, "\n---\n", sizeof("\n---\n"));
     result = write(m_parent->log_fd(), m_buffer, m_buffer_size);
     result = write(m_parent->log_fd(), "\n---\n", sizeof("\n---\n"));
   }
@@ -179,7 +185,6 @@ SCgiTask::event_read() {
   return;
 
 event_read_failed:
-  //   throw torrent::internal_error("SCgiTask::event_read() fault not handled.");
   close();
 }
 
@@ -225,8 +230,6 @@ scgi_match_content_type(const std::string& content_type, const char* type) {
 bool
 SCgiTask::detect_content_type(const std::string& content_type) {
   if (content_type.empty()) {
-    // If no CONTENT_TYPE was supplied, peek at the body to check if it's JSON
-    // { is a single request object, while [ is a batch array
     if (*m_body == '{' || *m_body == '[')
       m_content_type = ContentType::JSON;
     else
@@ -239,7 +242,6 @@ SCgiTask::detect_content_type(const std::string& content_type) {
     m_content_type = ContentType::XML;
 
   } else {
-    // If the content type is not JSON or XML, we don't know how to handle it.
     return false;
   }
 
@@ -258,15 +260,13 @@ SCgiTask::realloc_buffer(uint32_t size, const char* buffer, uint32_t bufferSize)
 
 void
 SCgiTask::receive_call(const char* buffer, uint32_t length) {
-  // TODO: Rewrite RpcManager.process to pass the result buffer instead of having to copy it.
-
   auto scgi_thread = torrent::utils::Thread::self();
+  bool trusted = m_trusted;
 
   auto result_callback = [this, scgi_thread](const char* b, uint32_t l) {
       receive_write(b, l);
 
       scgi_thread->callback_interrupt_pollling(this, [this]() {
-          // Only need to lock once here as a memory barrier.
           m_result_mutex.lock();
           m_result_mutex.unlock();
 
@@ -278,22 +278,26 @@ SCgiTask::receive_call(const char* buffer, uint32_t length) {
 
   switch (content_type()) {
   case rpc::SCgiTask::ContentType::JSON:
-    torrent::main_thread::thread()->callback_interrupt_pollling(this, [buffer, length, result_callback]() {
+    torrent::main_thread::thread()->callback_interrupt_pollling(this, [buffer, length, result_callback, trusted]() {
+        rpc::RpcManager::set_trusted(trusted);
         rpc.process(RpcManager::RPCType::JSON, buffer, length,
                     [result_callback](const char* b, uint32_t l) {
                       result_callback(b, l);
                       return true;
                     });
+        rpc::RpcManager::set_trusted(true);
       });
     break;
 
   case rpc::SCgiTask::ContentType::XML:
-    torrent::main_thread::thread()->callback_interrupt_pollling(this, [buffer, length, result_callback]() {
+    torrent::main_thread::thread()->callback_interrupt_pollling(this, [buffer, length, result_callback, trusted]() {
+        rpc::RpcManager::set_trusted(trusted);
         rpc.process(RpcManager::RPCType::XML, buffer, length,
                     [result_callback](const char* b, uint32_t l) {
                       result_callback(b, l);
                       return true;
                     });
+        rpc::RpcManager::set_trusted(true);
       });
     break;
 
@@ -309,7 +313,6 @@ SCgiTask::receive_write(const char* buffer, uint32_t length) {
 
   auto lock = std::lock_guard<std::mutex>(m_result_mutex);
 
-  // Need to cast due to a bug in MacOSX gcc-4.0.1.
   if (length + 256 > std::max(m_buffer_size, (unsigned int)default_buffer_size))
     realloc_buffer(length + 256, NULL, 0);
 
@@ -317,7 +320,6 @@ SCgiTask::receive_write(const char* buffer, uint32_t length) {
                         ? "Status: 200 OK\r\nContent-Type: application/json\r\nContent-Length: %i\r\n\r\n"
                         : "Status: 200 OK\r\nContent-Type: text/xml\r\nContent-Length: %i\r\n\r\n";
 
-  // Who ever bothers to check the return value?
   int headerSize = snprintf(m_buffer, m_buffer_size, header, length);
 
   m_position   = m_buffer;
