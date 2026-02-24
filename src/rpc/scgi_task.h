@@ -21,7 +21,7 @@ public:
 
   enum ContentType { XML, JSON };
 
-  SCgiTask() { m_fileDesc = -1; }
+  SCgiTask() { m_fileDesc = -1; m_trusted = true; }
 
   const char*         type_name() const override { return "scgi-task"; }
 
@@ -57,6 +57,8 @@ private:
   unsigned int        m_buffer_size{0};
 
   ContentType         m_content_type{ XML };
+
+  bool                m_trusted;
 };
 
 }

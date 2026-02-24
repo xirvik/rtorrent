@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
+#include <vector>
 #include <torrent/common.h>
 
 #include "rpc/command.h"
@@ -73,7 +75,16 @@ public:
 
   static void    object_to_target(const torrent::Object& obj, int callFlags, rpc::target_type* target, std::function<void()>* deleter);
 
+  // Trusted/untrusted XMLRPC connection model.
+  // When an SCGI request includes the UNTRUSTED_CONNECTION header,
+  // dangerous commands (execute*, schedule*, import, etc.) are blocked.
+  static bool    is_command_allowed(const std::string& command_name);
+  static bool    set_trusted(bool trusted);
+  static bool    is_trusted();
+
 private:
+  static thread_local bool m_trusted;
+
   XmlRpc        m_xmlrpc;
   JsonRpc       m_jsonrpc;
 
