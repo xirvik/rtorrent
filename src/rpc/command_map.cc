@@ -12,7 +12,6 @@
 #include "command.h"
 #include "command_map.h"
 
-#include "rpc_manager.h"
 #include "parse_commands.h"
 
 namespace rpc {
@@ -88,8 +87,6 @@ CommandMap::call_catch(const key_type& key, const target_type& target, const map
 
 const CommandMap::mapped_type
 CommandMap::call_command(const key_type& key, const mapped_type& arg, const target_type& target) {
-  if (!rpc::RpcManager::is_command_allowed(key))
-    throw torrent::input_error("Command \"" + std::string(key) + "\" is not allowed for untrusted connections.");
 
   iterator itr = base_type::find(key);
 
@@ -101,8 +98,6 @@ CommandMap::call_command(const key_type& key, const mapped_type& arg, const targ
 
 const CommandMap::mapped_type
 CommandMap::call_command(iterator itr, const mapped_type& arg, const target_type& target) {
-  if (!rpc::RpcManager::is_command_allowed(itr->first))
-    throw torrent::input_error("Command \"" + std::string(itr->first) + "\" is not allowed for untrusted connections.");
 
   return itr->second.m_anySlot(&itr->second.m_variable, target, arg);
 }

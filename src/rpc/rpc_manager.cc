@@ -1,8 +1,8 @@
 #include "config.h"
 
-#include <algorithm>
 #include <cstring>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <torrent/exceptions.h>
@@ -24,7 +24,7 @@ ExecFile   execFile;
 
 thread_local bool RpcManager::m_trusted = true;
 
-static const std::vector<std::string> untrusted_blocked_commands = {
+static const std::unordered_set<std::string> untrusted_blocked_commands = {
   "execute",
   "execute.capture",
   "execute.capture_nothrow",
@@ -91,8 +91,7 @@ RpcManager::is_command_allowed(const std::string& command_name) {
   if (m_trusted)
     return true;
 
-  return std::find(untrusted_blocked_commands.begin(), untrusted_blocked_commands.end(),
-                   command_name) == untrusted_blocked_commands.end();
+  return untrusted_blocked_commands.count(command_name) == 0;
 }
 
 bool
