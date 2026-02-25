@@ -383,6 +383,11 @@ xmlrpc_call_command(xmlrpc_env* env, xmlrpc_value* args, void* voidServerInfo) {
     if (env->fault_occurred)
       return NULL;
 
+    if (!rpc::RpcManager::is_command_allowed(server_info)) {
+      xmlrpc_env_set_fault(env, XMLRPC_REQUEST_REFUSED_ERROR, ("Command \"" + std::string(server_info) + "\" is not allowed for untrusted connections.").c_str());
+      return NULL;
+    }
+
     return object_to_xmlrpc(env, rpc::commands.call_command(itr, object, target));
 
   } catch (xmlrpc_error_c& e) {

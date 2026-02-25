@@ -133,6 +133,9 @@ jsonrpc_call_command(const std::string& method, const json& params) {
 
   params_object_list.erase(params_object_list.begin());
 
+  if (!rpc::RpcManager::is_command_allowed(method))
+    throw rpc_error(JSONRPC_METHOD_NOT_FOUND_ERROR, "Command \"" + method + "\" is not allowed for untrusted connections.");
+
   const auto& result = rpc::commands.call_command(itr, params_object, target);
 
   return object_to_json(result);
