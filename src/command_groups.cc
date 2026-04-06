@@ -405,4 +405,10 @@ initialize_command_groups() {
   rpc::rpc.mark_safe("choke_group.down.queued");
   rpc::rpc.mark_safe("choke_group.down.unchoked");
   rpc::rpc.mark_safe("choke_group.down.heuristics");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("group.insert_persistent_view");
+  rpc::rpc.mark_safe("group.rat_0.ratio.enable");
+  rpc::rpc.mark_safe("group.rat_0.ratio.disable");
+  rpc::rpc.mark_safe("group.rat_0.ratio.command");
 }

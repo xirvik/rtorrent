@@ -353,4 +353,7 @@ initialize_command_local() {
   rpc::rpc.mark_safe("pieces.preload.min_rate");
   rpc::rpc.mark_safe("pieces.memory.max");
   rpc::rpc.mark_safe("pieces.hash.on_completion");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("view.list");
 }

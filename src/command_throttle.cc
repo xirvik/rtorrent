@@ -255,4 +255,8 @@ initialize_command_throttle() {
   rpc::rpc.mark_safe("throttle.up.rate");
   rpc::rpc.mark_safe("throttle.down.max");
   rpc::rpc.mark_safe("throttle.down.rate");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("throttle.down");
+  rpc::rpc.mark_safe("throttle.up");
 }

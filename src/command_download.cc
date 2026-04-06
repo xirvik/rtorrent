@@ -971,4 +971,25 @@ initialize_command_download() {
   rpc::rpc.mark_safe("p.multicall");
   rpc::rpc.mark_safe("p.call_target");
   rpc::rpc.mark_safe("t.multicall");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("d.start");
+  rpc::rpc.mark_safe("d.stop");
+  rpc::rpc.mark_safe("d.delete_tied");
+  rpc::rpc.mark_safe("d.tracker_announce");
+  rpc::rpc.mark_safe("d.priority.set");
+  rpc::rpc.mark_safe("d.custom.set");
+  rpc::rpc.mark_safe("d.custom1.set");
+  rpc::rpc.mark_safe("d.custom5.set");
+  rpc::rpc.mark_safe("d.uploads_max.set");
+  rpc::rpc.mark_safe("d.peer_exchange.set");
+  rpc::rpc.mark_safe("d.connection_seed.set");
+  rpc::rpc.mark_safe("d.throttle_name.set");
+  rpc::rpc.mark_safe("d.directory.set");
+  rpc::rpc.mark_safe("d.directory_base.set");
+  rpc::rpc.mark_safe("d.message.set");
+  rpc::rpc.mark_safe("d.chunks_seen");
+  rpc::rpc.mark_safe("d.complete");
+  rpc::rpc.mark_safe("d.tied_to_file");
+  rpc::rpc.mark_safe("d.views.has");
 }

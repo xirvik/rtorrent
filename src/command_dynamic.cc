@@ -478,4 +478,7 @@ initialize_command_dynamic() {
   rpc::rpc.mark_safe("strings.log_group");
   rpc::rpc.mark_safe("strings.tracker_event");
   rpc::rpc.mark_safe("strings.tracker_mode");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("method.set");
 }

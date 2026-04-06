@@ -352,4 +352,7 @@ initialize_command_network() {
 
   rpc::rpc.mark_safe("network.rpc.use_xmlrpc");
   rpc::rpc.mark_safe("network.rpc.use_jsonrpc");
+
+  // ruTorrent UI commands (whitelist for untrusted connections)
+  rpc::rpc.mark_safe("network.http.max_open");
 }
