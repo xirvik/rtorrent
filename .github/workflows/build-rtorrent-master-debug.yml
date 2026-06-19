@@ -20,6 +20,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to publish the rolling pre-release
     container:
       image: debian:13
     steps:
@@ -79,10 +81,32 @@ jobs:
           echo "=== dynamic deps (no libtorrent.so expected) ==="; ldd out/rtorrent-master-debug | sort
           echo "=== size (debug symbols kept) ==="; ls -lh out/rtorrent-master-debug | awk '{print $5}'
 
-      - name: Upload artifact
+      - name: Upload artifact (per-run, traceable, 30-day)
         uses: actions/upload-artifact@v4
         with:
           name: rtorrent-master-debug-${{ env.RT_SHA }}-lt-${{ env.LT_SHA }}
           path: out/
           if-no-files-found: error
           retention-days: 30
+
+      # Anonymous, permanent, one-click download from the repo main page
+      # ("Releases" panel). Rolling pre-release updated on every master build;
+      # stable URL: <repo>/releases/download/master-debug/rtorrent-master-debug
+      - name: Publish/update the "master-debug" rolling pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: master-debug
+          name: "rtorrent-master-debug (latest master + xirvik fixes)"
+          prerelease: true
+          body: |
+            **Static rtorrent with debug symbols**, built from **master of both xirvik forks**
+            (upstream master + xirvik fixes). For testing / stack-trace reporting only — this is
+            NOT the build the fleet runs.
+
+            - rtorrent: `${{ env.RT_SHA }}`
+            - libtorrent: `${{ env.LT_SHA }}`
+            - built in `debian:13`; only libtorrent is statically linked; debug symbols kept
+          files: |
+            out/rtorrent-master-debug
+            out/id
+          fail_on_unmatched_files: true
