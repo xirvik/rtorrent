@@ -1,0 +1,88 @@
+name: build-rtorrent-master-debug
+
+# Builds rtorrent-master-debug: a static (libtorrent statically linked) rtorrent
+# binary WITH debug symbols, from the *master* of the xirvik forks of libtorrent
+# and rtorrent -- same recipe as general_installer's build_rtorrent_bundle.sh.
+#
+# Only libtorrent is statically linked; libstdc++/libcurl/xmlrpc-c/ncurses/
+# openssl/zlib stay dynamic. The job runs inside a debian:13 (trixie) container
+# so those dynamic deps match the production fleet's ABI.
+#
+# Runs on every push to this repo's master, and on demand (Run workflow).
+# It always builds master of BOTH forks, so the artifact reflects whatever we
+# have on master at that point in time.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            git ca-certificates build-essential g++ \
+            autoconf automake libtool pkg-config \
+            libncurses-dev libcurl4-openssl-dev libssl-dev zlib1g-dev \
+            libxmlrpc-c++9-dev libxmlrpc-core-c3-dev
+
+      - name: Clone master of both forks
+        run: |
+          set -eux
+          git clone --branch master --single-branch https://github.com/xirvik/libtorrent.git libtorrent
+          git clone --branch master --single-branch https://github.com/xirvik/rtorrent.git rtorrent
+          echo "LT_SHA=$(git -C libtorrent rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          echo "RT_SHA=$(git -C rtorrent rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Build libtorrent (static, no shared)
+        run: |
+          set -eux
+          cd libtorrent
+          autoreconf -fvi
+          ./configure --prefix="$GITHUB_WORKSPACE/lt-static" \
+            --enable-static --disable-shared
+          make -j"$(nproc)"
+          make install
+          # static-only install must not produce any .so
+          ! ls "$GITHUB_WORKSPACE/lt-static/lib/"*.so* 2>/dev/null
+
+      - name: Build rtorrent (against static libtorrent, debug symbols kept)
+        run: |
+          set -eux
+          cd rtorrent
+          autoreconf -fvi
+          PKG_CONFIG_PATH="$GITHUB_WORKSPACE/lt-static/lib/pkgconfig" \
+            ./configure --with-xmlrpc-c
+          make -j"$(nproc)"
+          # libtorrent MUST be statically linked
+          if ldd src/rtorrent | grep -q 'libtorrent\.so'; then
+            echo "ERROR: rtorrent dynamically links libtorrent.so -- static link failed"
+            ldd src/rtorrent; exit 1
+          fi
+
+      - name: Package rtorrent-master-debug
+        run: |
+          set -eux
+          mkdir -p out
+          cp rtorrent/src/rtorrent out/rtorrent-master-debug
+          echo "rTorrent ${RT_SHA}/${LT_SHA} (xirvik master)" > out/id
+          echo "=== id ==="; cat out/id
+          echo "=== version ==="; out/rtorrent-master-debug -h 2>&1 | head -1 || true
+          echo "=== dynamic deps (no libtorrent.so expected) ==="; ldd out/rtorrent-master-debug | sort
+          echo "=== size (debug symbols kept) ==="; ls -lh out/rtorrent-master-debug | awk '{print $5}'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtorrent-master-debug-${{ env.RT_SHA }}-lt-${{ env.LT_SHA }}
+          path: out/
+          if-no-files-found: error
+          retention-days: 30
