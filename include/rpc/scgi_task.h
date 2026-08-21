@@ -59,7 +59,7 @@ private:
                              uint32_t    bufferSize = 0);
 
   ContentType m_type{ XML };
-  bool        m_trusted{ false };
+  bool        m_trusted{ true };
 
   SCgi* m_parent;
 

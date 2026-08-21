@@ -132,15 +132,14 @@ SCgiTask::event_read() {
     if (*contentPos != '\0' || contentSize <= 0)
       goto event_read_failed;
 
-    // Absent header means untrusted: the operator's proxy states the posture.
-    m_trusted = false;
+    m_trusted = true;
 
     const auto untrustedPos = header.find("UNTRUSTED_CONNECTION");
     if (untrustedPos != std::string_view::npos) {
       const auto untrustedValuePos = untrustedPos + 20 + 1;
 
-      if (untrustedValuePos < header.size() && header[untrustedValuePos] == '0')
-        m_trusted = true;
+      if (untrustedValuePos < header.size() && header[untrustedValuePos] == '1')
+        m_trusted = false;
     }
 
     // RFC 3875, 4.1.3
