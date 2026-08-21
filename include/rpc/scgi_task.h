@@ -25,6 +25,10 @@ public:
     m_fileDesc = -1;
   }
 
+  bool trusted() const {
+    return m_trusted;
+  }
+
   ContentType type() const {
     return m_type;
   }
@@ -55,6 +59,7 @@ private:
                              uint32_t    bufferSize = 0);
 
   ContentType m_type{ XML };
+  bool        m_trusted{ false };
 
   SCgi* m_parent;
 

@@ -43,7 +43,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL
   add_compile_options("-g")
 else()
   add_compile_options("-flto")
-  add_link_options("-flto" "-s")
+  add_link_options("-flto")
 endif()
 
 # Use GNU install destinations

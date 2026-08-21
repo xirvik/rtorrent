@@ -39,6 +39,21 @@ public:
 
   bool is_initialized() const;
 
+  bool is_trusted() const {
+    return m_trusted;
+  }
+
+  void set_trusted(bool state) {
+    m_trusted = state;
+  }
+
+  bool dispatch_untrusted(RPCType            type,
+                          const char*        inBuffer,
+                          uint32_t           length,
+                          IRpc::res_callback callback);
+
+  void mark_safe(const std::string& key);
+
   void cleanup();
 
   void insert_command(const char* name, const char* parm, const char* doc);
@@ -59,6 +74,8 @@ public:
 private:
   std::array<IRpc*, RPC_TYPE_SIZE> m_rpcProcessors{ nullptr };
 
+  bool m_trusted{ true };
+
   bool m_initialized;
 
   slot_download m_slotFindDownload;
@@ -66,6 +83,19 @@ private:
   slot_tracker  m_slotFindTracker;
   slot_peer     m_slotFindPeer;
 };
+
+class trust_scope {
+public:
+  explicit trust_scope(bool state);
+  ~trust_scope();
+
+  trust_scope(const trust_scope&)            = delete;
+  trust_scope& operator=(const trust_scope&) = delete;
+
+private:
+  bool m_previous;
+};
+
 }
 
 #endif

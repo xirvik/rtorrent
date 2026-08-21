@@ -55,6 +55,8 @@ initialize_commands() {
   initialize_command_throttle();
   initialize_command_tracker();
   initialize_command_scheduler();
+
+  initialize_command_untrusted_safe();
 }
 
 void
