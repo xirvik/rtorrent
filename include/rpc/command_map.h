@@ -72,6 +72,8 @@ public:
   static constexpr int flag_file_target    = 0x200;
   static constexpr int flag_tracker_target = 0x400;
 
+  static constexpr int flag_untrusted_safe = 0x800;
+
   CommandMap() = default;
   ~CommandMap();
   CommandMap(const CommandMap&) = delete;

@@ -11,6 +11,9 @@
 
 #include "rpc/rpc_manager.h"
 
+#include "rpc/command_map.h"
+#include "rpc/parse_commands.h"
+
 namespace rpc {
 
 RpcManager::RpcManager() {
@@ -54,6 +57,35 @@ RpcManager::dispatch(RPCType            type,
     default:
       throw torrent::internal_error("Invalid RPC type.");
   }
+}
+
+bool
+RpcManager::dispatch_untrusted(RPCType            type,
+                               const char*        inBuffer,
+                               uint32_t           length,
+                               IRpc::res_callback callback) {
+  trust_scope scope(false);
+
+  return dispatch(type, inBuffer, length, callback);
+}
+
+trust_scope::trust_scope(bool state)
+  : m_previous(rpc.is_trusted()) {
+  rpc.set_trusted(state);
+}
+
+trust_scope::~trust_scope() {
+  rpc.set_trusted(m_previous);
+}
+
+void
+RpcManager::mark_safe(const std::string& key) {
+  auto itr = commands.find(key.c_str());
+
+  if (itr == commands.end())
+    return;
+
+  itr->second.m_flags |= CommandMap::flag_untrusted_safe;
 }
 
 void

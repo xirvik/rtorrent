@@ -10,6 +10,8 @@
 
 void
 initialize_commands();
+void
+initialize_command_untrusted_safe();
 
 void
 cleanup_commands();

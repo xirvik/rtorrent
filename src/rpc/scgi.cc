@@ -157,13 +157,20 @@ SCgi::receive_call(SCgiTask* task, const char* buffer, uint32_t length) {
   switch (task->type()) {
     case SCgiTask::ContentType::JSON:
       result =
-        rpc.dispatch(RpcManager::RPCType::JSON, buffer, length, callback);
+        task->trusted()
+          ? rpc.dispatch(RpcManager::RPCType::JSON, buffer, length, callback)
+          : rpc.dispatch_untrusted(
+              RpcManager::RPCType::JSON, buffer, length, callback);
       break;
     case SCgiTask::ContentType::XML:
     default:
       torrent::thread_base::acquire_global_lock();
       torrent::main_thread()->interrupt();
-      result = rpc.dispatch(RpcManager::RPCType::XML, buffer, length, callback);
+      result =
+        task->trusted()
+          ? rpc.dispatch(RpcManager::RPCType::XML, buffer, length, callback)
+          : rpc.dispatch_untrusted(
+              RpcManager::RPCType::XML, buffer, length, callback);
       torrent::thread_base::release_global_lock();
   }
 
