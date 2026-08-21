@@ -91,7 +91,7 @@ template<>
 inline bool
 is_target_compatible<torrent::File*>(const target_type& target) {
   return std::get<0>(target) == command_base::target_file ||
-         command_base::target_file_itr;
+         std::get<0>(target) == command_base::target_file_itr;
 }
 
 template<>
