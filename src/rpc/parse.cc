@@ -7,11 +7,19 @@
 #include <torrent/exceptions.h>
 #include <torrent/utils/path.h>
 
+#include <limits>
+
 #include "rpc/parse.h"
 
 namespace rpc {
 
 constexpr uint32_t max_parse_depth = 1024;
+
+static bool
+value_fits_shifted(int64_t value, int shift) {
+  return value <= (std::numeric_limits<int64_t>::max() >> shift) &&
+         value >= (std::numeric_limits<int64_t>::min() >> shift);
+}
 
 const char*
 parse_skip_wspace(const char* first, const char* last) {
@@ -142,16 +150,22 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
       break;
     case 'k':
     case 'K':
+      if (!value_fits_shifted(*value, 10))
+        return src;
       *value = *value << 10;
       ++last;
       break;
     case 'm':
     case 'M':
+      if (!value_fits_shifted(*value, 20))
+        return src;
       *value = *value << 20;
       ++last;
       break;
     case 'g':
     case 'G':
+      if (!value_fits_shifted(*value, 30))
+        return src;
       *value = *value << 30;
       ++last;
       break;
@@ -159,6 +173,10 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
       //   case '\0': *value = *value * unit; break;
       //   default: throw torrent::input_error("Could not parse value.");
     default:
+      if (unit != 0 &&
+          (*value > std::numeric_limits<int64_t>::max() / unit ||
+           *value < std::numeric_limits<int64_t>::min() / unit))
+        return src;
       *value = *value * unit;
       break;
   }
