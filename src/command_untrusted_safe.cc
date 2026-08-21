@@ -335,4 +335,8 @@ initialize_command_untrusted_safe() {
   rpc::rpc.mark_safe("value");
   rpc::rpc.mark_safe("view.set_not_visible");
   rpc::rpc.mark_safe("view.set_visible");
+  rpc::rpc.mark_safe("view.list");
+  rpc::rpc.mark_safe("system.time");
+  rpc::rpc.mark_safe("system.time_seconds");
+  rpc::rpc.mark_safe("system.time_usec");
 }
