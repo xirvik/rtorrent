@@ -101,17 +101,20 @@ const char*
 parse_object(const char*      first,
              const char*      last,
              torrent::Object* dest,
-             bool (*delim)(const char) = &parse_is_delim_default);
+             bool (*delim)(const char) = &parse_is_delim_default,
+             uint32_t         depth = 0);
 const char*
 parse_list(const char*      first,
            const char*      last,
            torrent::Object* dest,
-           bool (*delim)(const char) = &parse_is_delim_default);
+           bool (*delim)(const char) = &parse_is_delim_default,
+           uint32_t         depth = 0);
 const char*
 parse_whole_list(const char*      first,
                  const char*      last,
                  torrent::Object* dest,
-                 bool (*delim)(const char) = &parse_is_delim_default);
+                 bool (*delim)(const char) = &parse_is_delim_default,
+                 uint32_t         depth = 0);
 
 std::string
 convert_to_string(const torrent::Object& src);
