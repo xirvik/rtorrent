@@ -189,7 +189,7 @@ print_object_xml(const torrent::Object& obj, tinyxml2::XMLPrinter* printer) {
     break;
 
   case torrent::Object::TYPE_VALUE:
-    printer->OpenElement("i8", true);
+    printer->OpenElement(rpc.dialect() == XmlRpc::dialect_generic ? "i4" : "i8", true);
     printer->PushText(std::to_string(obj.as_value()).c_str());
     printer->CloseElement(true);
     break;
@@ -446,7 +446,12 @@ XmlRpc::cleanup() {}
 void
 XmlRpc::insert_command(const char*, const char*, const char*) {}
 void
-XmlRpc::set_dialect(int) {}
+XmlRpc::set_dialect(int dialect) {
+  if (dialect != dialect_generic && dialect != dialect_i8 && dialect != dialect_apache)
+    throw torrent::input_error("Unsupported XMLRPC dialect selected.");
+
+  m_dialect = dialect;
+}
 
 int64_t
 XmlRpc::size_limit() { return static_cast<int64_t>(m_sizeLimit); }
