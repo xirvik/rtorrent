@@ -18,6 +18,7 @@ class SCgiTask : public torrent::Event {
 public:
   static constexpr unsigned int default_buffer_size = 2047;
   static constexpr int          max_header_size     = 2000;
+  static constexpr int          max_content_size    = (1 << 26);
 
   enum ContentType { XML, JSON };
 

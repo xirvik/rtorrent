@@ -129,7 +129,8 @@ SCgiTask::event_read() {
     contentSize =
       strtol(header.data() + contentLengthPos + 14 + 1, &contentPos, 0);
 
-    if (*contentPos != '\0' || contentSize <= 0)
+    if (*contentPos != '\0' || contentSize <= 0 ||
+        contentSize > max_content_size)
       goto event_read_failed;
 
     m_trusted = true;
