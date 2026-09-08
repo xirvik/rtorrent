@@ -188,9 +188,6 @@ initialize_command_untrusted_safe() {
   rpc::rpc.mark_safe("network.max_open_sockets");
   rpc::rpc.mark_safe("network.open_files");
   rpc::rpc.mark_safe("network.open_sockets");
-  rpc::rpc.mark_safe("network.port_open");
-  rpc::rpc.mark_safe("network.port_random");
-  rpc::rpc.mark_safe("network.port_range");
   rpc::rpc.mark_safe("network.receive_buffer.size");
   rpc::rpc.mark_safe("network.scgi.dont_route");
   rpc::rpc.mark_safe("network.send_buffer.size");
