@@ -525,6 +525,11 @@ main(int argc, char** argv) {
 
     CMD2_REDIRECT("torrent_list_layout", "ui.torrent_list.layout.set");
 
+    // The redirects above are registered after the untrusted-safe list is
+    // first applied, so a mark for one of them (ratio.max and friends) finds
+    // no command and is dropped. Apply the list again now they exist.
+    initialize_command_untrusted_safe();
+
     // Deprecated commands. Don't use these anymore.
 
     if (rpc::call_command_value("method.use_intermediate") == 1) {

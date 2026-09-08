@@ -339,4 +339,11 @@ initialize_command_untrusted_safe() {
   rpc::rpc.mark_safe("system.time");
   rpc::rpc.mark_safe("system.time_seconds");
   rpc::rpc.mark_safe("system.time_usec");
+
+  rpc::rpc.mark_safe("ratio.max");
+  rpc::rpc.mark_safe("ratio.max.set");
+  rpc::rpc.mark_safe("ratio.min");
+  rpc::rpc.mark_safe("ratio.min.set");
+  rpc::rpc.mark_safe("ratio.upload");
+  rpc::rpc.mark_safe("ratio.upload.set");
 }
