@@ -9,7 +9,7 @@ file(APPEND ${BUILDINFO_H} "/* Version number of package */\n")
 file(APPEND ${BUILDINFO_H} "#define RT_VERSION \"${PROJECT_VERSION}\"\n\n")
 
 file(APPEND ${BUILDINFO_H} "/* Version number of API */\n")
-file(APPEND ${BUILDINFO_H} "#define RT_API_VERSION \"${API_VERSION}\"\n\n")
+file(APPEND ${BUILDINFO_H} "#define RT_API_VERSION ${API_VERSION}\n\n")
 
 file(APPEND ${BUILDINFO_H} "/* Http user agent */\n")
 file(

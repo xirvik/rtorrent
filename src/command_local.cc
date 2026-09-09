@@ -212,7 +212,9 @@ initialize_command_local() {
            [](const auto&, const auto&) { return system_hostname(); });
   CMD2_ANY("system.pid", [](const auto&, const auto&) { return getpid(); });
 
-  CMD2_VAR_C_STRING("system.api_version", (int64_t)RT_API_VERSION);
+  CMD2_ANY("system.api_version", [](const auto&, const auto&) {
+    return (int64_t)RT_API_VERSION;
+  });
   CMD2_VAR_C_STRING("system.client_version", RT_VERSION);
   CMD2_VAR_C_STRING("system.library_version", torrent::version());
   CMD2_VAR_VALUE("system.file.allocate", 0);
