@@ -31,6 +31,9 @@ public:
                       const char* parm,
                       const char* doc) override;
 
+  static int64_t size_limit();
+  static void    set_size_limit(uint64_t size);
+
 private:
   void* m_env{ nullptr };
   void* m_registry{ nullptr };

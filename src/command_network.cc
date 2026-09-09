@@ -24,6 +24,7 @@
 #include "core/download.h"
 #include "core/manager.h"
 #include "rpc/parse.h"
+#include "rpc/rpc_xml.h"
 #include "rpc/parse_commands.h"
 #include "rpc/scgi.h"
 #include "ui/root.h"
@@ -391,9 +392,11 @@ initialize_command_network() {
   CMD2_VAR_BOOL("network.scgi.dont_route", false);
 
   CMD2_ANY("network.xmlrpc.size_limit", [](const auto&, const auto&) {
-    return std::numeric_limits<size_t>::max();
+    return rpc::RpcXml::size_limit();
+  });
+  CMD2_ANY_VALUE_V("network.xmlrpc.size_limit.set", [](const auto&, const auto& value) {
+    rpc::RpcXml::set_size_limit(value);
   });
 
   CMD2_REDIRECT_GENERIC("network.xmlrpc.dialect.set", "true");
-  CMD2_REDIRECT_GENERIC("network.xmlrpc.size_limit.set", "true");
 }

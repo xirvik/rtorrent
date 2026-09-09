@@ -556,8 +556,6 @@ RpcXml::initialize() {
   xmlrpc_env_init((xmlrpc_env*)m_env);
   m_registry = xmlrpc_registry_new((xmlrpc_env*)m_env);
 
-  xmlrpc_limit_set(XMLRPC_XML_SIZE_LIMIT_ID,
-                   std::numeric_limits<size_t>::max());
   xmlrpc_registry_set_dialect(
     (xmlrpc_env*)m_env, (xmlrpc_registry*)m_registry, xmlrpc_dialect_i8);
 }
@@ -610,6 +608,19 @@ RpcXml::insert_command(const char* name, const char* parm, const char* doc) {
     throw torrent::internal_error("Fault occured while inserting xmlrpc call.");
 
   xmlrpc_env_clean(&localEnv);
+}
+
+int64_t
+RpcXml::size_limit() {
+  return xmlrpc_limit_get(XMLRPC_XML_SIZE_LIMIT_ID);
+}
+
+void
+RpcXml::set_size_limit(uint64_t size) {
+  if (size >= (64 << 20))
+    throw torrent::input_error("Invalid XMLRPC limit size.");
+
+  xmlrpc_limit_set(XMLRPC_XML_SIZE_LIMIT_ID, size);
 }
 
 }
