@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <cstdio>
+#include <limits>
 #include <string>
 #include <vector>
 #include <torrent/rate.h>
@@ -40,6 +41,14 @@ apply_on_ratio(const torrent::Object& rawArgs) {
 
   std::vector<core::Download*> downloads;
 
+  auto scaled = [](int64_t value, int64_t factor) {
+    if (value <= 0 || factor <= 0)
+      return int64_t();
+
+    return value > std::numeric_limits<int64_t>::max() / factor ?
+      std::numeric_limits<int64_t>::max() : value * factor;
+  };
+
   for  (auto itr = (*view_itr)->begin_visible(), last = (*view_itr)->end_visible(); itr != last; itr++) {
     if (!(*itr)->is_seeding() || rpc::call_command_value("d.ignore_commands", rpc::make_target(*itr)) != 0)
       continue;
@@ -47,8 +56,10 @@ apply_on_ratio(const torrent::Object& rawArgs) {
     int64_t total_done   = (*itr)->download()->bytes_done();
     int64_t total_upload = (*itr)->info()->up_rate()->total();
 
-    if (!(total_upload >= min_upload && total_upload * 100 >= total_done * min_ratio) &&
-        !(max_ratio > 0 && total_upload * 100 > total_done * max_ratio))
+    int64_t uploaded = scaled(total_upload, 100);
+
+    if (!(total_upload >= min_upload && uploaded >= scaled(total_done, min_ratio)) &&
+        !(max_ratio > 0 && uploaded > scaled(total_done, max_ratio)))
       continue;
 
     downloads.push_back(itr->get());
