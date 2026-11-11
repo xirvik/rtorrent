@@ -220,10 +220,10 @@ Manager::cleanup() {
   // When we implement asynchronous DNS lookups, we need to cancel them
   // here before the torrent::* objects are deleted.
 
-  torrent::cleanup();
-
   delete m_httpStack;
   CurlStack::global_cleanup();
+
+  torrent::cleanup();
 }
 
 void
