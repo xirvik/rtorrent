@@ -131,7 +131,7 @@ public:
       return reinterpret_cast<stack_type*>(data);
     }
 
-    char buffer[sizeof(torrent::Object) * max_arguments];
+    alignas(torrent::Object) char buffer[sizeof(torrent::Object) * max_arguments];
   };
 
   command_base() {
