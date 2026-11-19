@@ -4,6 +4,8 @@
 #ifndef RTORRENT_CORE_DOWNLOAD_H
 #define RTORRENT_CORE_DOWNLOAD_H
 
+#include <memory>
+
 #include <torrent/data/file_list.h>
 #include <torrent/download.h>
 #include <torrent/download_info.h>
@@ -80,6 +82,22 @@ public:
   }
   void set_hash_failed(bool v) {
     m_hashFailed = v;
+  }
+
+  // Expires once the download is erased. Take it before triggering events
+  // or running commands that may erase the download.
+  std::weak_ptr<void> lifetime() const {
+    return m_lifetime;
+  }
+  void release_lifetime() {
+    m_lifetime.reset();
+  }
+
+  bool is_erasing() const {
+    return m_erasing;
+  }
+  void set_erasing() {
+    m_erasing = true;
   }
 
   download_type* download() {
@@ -169,6 +187,8 @@ private:
   // Store the FileList instance so we can use slots etc on it.
   download_type m_download;
   bool          m_hashFailed;
+  bool          m_erasing{ false };
+  std::shared_ptr<void> m_lifetime{ std::make_shared<char>() };
   std::string   m_message;
   uint32_t      m_resumeFlags;
   unsigned int  m_group;

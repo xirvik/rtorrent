@@ -217,6 +217,12 @@ DownloadList::erase(iterator itr) {
     throw torrent::internal_error(
       "DownloadList::erase(...) could not find download.");
 
+  // An event handler below may erase the same download again.
+  if ((*itr)->is_erasing())
+    return std::next(itr);
+
+  (*itr)->set_erasing();
+
   lt_log_print_info(torrent::LOG_TORRENT_INFO,
                     (*itr)->info(),
                     "download_list",
@@ -234,6 +240,7 @@ DownloadList::erase(iterator itr) {
     v->erase(*itr);
   }
 
+  (*itr)->release_lifetime();
   torrent::download_remove(*(*itr)->download());
   delete *itr;
 
@@ -299,9 +306,14 @@ DownloadList::close_directly(Download* download) {
                     "download_list",
                     "Closing download directly.");
 
+  auto lifetime = download->lifetime();
+
   if (download->download()->info()->is_active()) {
     if (!download->connection_list()->empty()) {
       DL_TRIGGER_EVENT(download, "event.download.inactive");
+
+      if (lifetime.expired())
+        return;
     }
 
     download->download()->stop(torrent::Download::stop_skip_tracker);
@@ -345,7 +357,12 @@ DownloadList::close_throw(Download* download) {
   // When pause gets called it will clear the initial hash check state
   // and set hash failed. This should ensure hashing doesn't restart
   // until resume gets called.
+  auto lifetime = download->lifetime();
+
   pause(download);
+
+  if (lifetime.expired())
+    return;
 
   // Check for is_open after pause due to hashing.
   if (!download->is_open())
@@ -369,6 +386,10 @@ DownloadList::close_throw(Download* download) {
                                   "we're going into a hashing loop.");
 
   DL_TRIGGER_EVENT(download, "event.download.hash_removed");
+
+  if (lifetime.expired())
+    return;
+
   DL_TRIGGER_EVENT(download, "event.download.closed");
 }
 
@@ -530,6 +551,8 @@ DownloadList::pause(Download* download, int flags) {
                     "Pausing download: flags:%0x.",
                     flags);
 
+  auto lifetime = download->lifetime();
+
   try {
 
     download->set_resume_flags(~uint32_t());
@@ -547,6 +570,9 @@ DownloadList::pause(Download* download, int flags) {
                                   rpc::make_target(download));
 
       DL_TRIGGER_EVENT(download, "event.download.hash_removed");
+
+      if (lifetime.expired())
+        return;
     }
 
     if (!download->download()->info()->is_active())
@@ -554,6 +580,9 @@ DownloadList::pause(Download* download, int flags) {
 
     if (!download->connection_list()->empty()) {
       DL_TRIGGER_EVENT(download, "event.download.inactive");
+
+      if (lifetime.expired())
+        return;
     }
 
     download->download()->stop(flags);
@@ -565,6 +594,9 @@ DownloadList::pause(Download* download, int flags) {
     // called when the download isn't active, but was in the 'started'
     // view.
     DL_TRIGGER_EVENT(download, "event.download.paused");
+
+    if (lifetime.expired())
+      return;
 
     rpc::call_command(
       "d.state_changed.set", cachedTime.seconds(), rpc::make_target(download));
@@ -724,11 +756,24 @@ DownloadList::hash_queue(Download* download, int type) {
 
   // HACK
   if (download->is_open()) {
+    auto lifetime = download->lifetime();
+
     pause(download, torrent::Download::stop_skip_tracker);
+
+    if (lifetime.expired())
+      return;
+
     download->download()->close();
 
     DL_TRIGGER_EVENT(download, "event.download.hash_removed");
+
+    if (lifetime.expired())
+      return;
+
     DL_TRIGGER_EVENT(download, "event.download.closed");
+
+    if (lifetime.expired())
+      return;
   }
 
   torrent::resume_clear_progress(
