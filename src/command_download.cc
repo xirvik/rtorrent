@@ -548,6 +548,9 @@ p_call_target(const torrent::Object::list_type& args) {
   const std::string& peer_id     = itr++->as_string();
   const std::string& command_key = itr++->as_string();
 
+  if (download == nullptr)
+    throw torrent::input_error("invalid parameters: info-hash not found");
+
   torrent::HashString hash;
 
   if (peer_id.size() != 40 || torrent::hash_string_from_hex_c_str(
