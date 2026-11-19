@@ -78,7 +78,9 @@ apply_throttle(const torrent::Object::list_type& args, bool up) {
     throw torrent::input_error("Missing throttle rate for '" + name + "'.");
 
   int64_t rate;
-  rpc::parse_whole_value_nothrow(argItr->as_string().c_str(), &rate);
+
+  if (!rpc::parse_whole_value_nothrow(argItr->as_string().c_str(), &rate))
+    throw torrent::input_error("Invalid throttle rate for '" + name + "'.");
 
   if (rate < 0)
     throw torrent::input_error("Throttle rate must be non-negative.");
