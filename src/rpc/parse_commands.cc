@@ -160,7 +160,10 @@ parse_command(target_type target, const char* first, const char* last) {
   torrent::Object args;
 
   if (!parse_line(key, args, first, last)) {
-    return std::make_pair(torrent::Object(), first);
+    // A comment runs to the end of its line, return where the next command
+    // starts.
+    first = std::find_if(first, last, command_map_is_newline());
+    return std::make_pair(torrent::Object(), first != last ? first + 1 : first);
   }
 
   // Replace any strings starting with '$' with the result of the
