@@ -2,6 +2,7 @@
 // Copyright (C) 2005-2011, Jari Sundell <jaris@ifi.uio.no>
 
 #include <cstdio>
+#include <limits>
 #include <torrent/download/resource_manager.h>
 #include <torrent/rate.h>
 #include <torrent/throttle.h>
@@ -84,6 +85,9 @@ apply_throttle(const torrent::Object::list_type& args, bool up) {
 
   if (rate < 0)
     throw torrent::input_error("Throttle rate must be non-negative.");
+
+  if (rate > (int64_t)(std::numeric_limits<uint32_t>::max() >> 10))
+    throw torrent::input_error("Throttle rate is too large.");
 
   core::ThrottleMap::iterator itr = control->core()->throttles().find(name);
   if (itr == control->core()->throttles().end())
