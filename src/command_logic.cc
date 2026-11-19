@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <regex>
 
 #include <torrent/utils/algorithm.h>
@@ -28,14 +29,24 @@ apply_value(rpc::target_type, const torrent::Object::list_type& args) {
   if (args.front().is_value()) {
     val = args.front().as_value();
   } else {
-    int   base = args.size() > 1
-                   ? args.back().is_value()
-                       ? args.back().as_value()
-                       : strtol(args.back().as_string().c_str(), nullptr, 10)
-                   : 10;
-    char* endptr;
+    int64_t base = args.size() > 1
+                     ? args.back().is_value()
+                         ? args.back().as_value()
+                         : strtoll(args.back().as_string().c_str(), nullptr, 10)
+                     : 10;
+
+    if (base != 0 && (base < 2 || base > 36))
+      throw torrent::input_error("'value' base must be 0 or between 2 and 36!");
+
+    char* endptr = nullptr;
+    errno        = 0;
 
     val = strtoll(args.front().as_string().c_str(), &endptr, base);
+
+    if (errno == ERANGE)
+      throw torrent::input_error("Number out of range: " +
+                                 args.front().as_string());
+
     while (*endptr == ' ' || *endptr == '\n')
       ++endptr;
     if (*endptr && *endptr != '\0')
