@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <torrent/data/file.h>
 #include <torrent/download.h>
 #include <torrent/exceptions.h>
@@ -912,10 +913,9 @@ DownloadList::process_meta_download(Download* download) {
     return;
   }
 
-  torrent::Object* bencode = new torrent::Object(torrent::Object::create_map());
+  auto bencode = std::make_unique<torrent::Object>(torrent::Object::create_map());
   file >> bencode->insert_key("info", torrent::Object());
   if (file.fail()) {
-    delete bencode;
     lt_log_print(
       torrent::LOG_TORRENT_ERROR,
       "Could not create download, the input is not a valid torrent.");
@@ -934,7 +934,8 @@ DownloadList::process_meta_download(Download* download) {
       .swap(download->bencode()->get_key("announce-list"));
 
   erase_ptr(download);
-  control->core()->try_create_download_from_meta_download(bencode, metafile);
+  control->core()->try_create_download_from_meta_download(std::move(bencode),
+                                                          metafile);
 }
 
 }

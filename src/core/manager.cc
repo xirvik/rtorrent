@@ -458,7 +458,8 @@ Manager::try_create_download(const std::string&       uri,
 }
 
 void
-Manager::try_create_download_from_meta_download(torrent::Object*   bencode,
+Manager::try_create_download_from_meta_download(
+  std::unique_ptr<torrent::Object> bencode,
                                                 const std::string& metafile) {
   DownloadFactory* f = new DownloadFactory(this);
 
