@@ -419,6 +419,17 @@ Manager::try_create_download(const std::string&       uri,
       !file_status_cache()->insert(uri, flags & create_throw))
     return result;
 
+  std::string raw_data;
+
+  if (!(flags & create_raw_data) && is_data_uri(uri)) {
+    const unsigned long start = uri.find("base64,", 5) + 7;
+    if (start >= uri.size()) {
+      throw torrent::input_error("Empty base64.");
+    }
+
+    raw_data = base64Decode(std::string_view(uri.c_str() + start));
+  }
+
   // Adding download.
   DownloadFactory* f = new DownloadFactory(this);
 
@@ -441,12 +452,7 @@ Manager::try_create_download(const std::string&       uri,
   if (flags & create_raw_data) {
     f->load_raw_data(uri);
   } else if (is_data_uri(uri)) {
-    const unsigned long start = uri.find("base64,", 5) + 7;
-    if (start >= uri.size()) {
-      throw torrent::input_error("Empty base64.");
-    }
-
-    f->load_raw_data(base64Decode(std::string_view(uri.c_str() + start)));
+    f->load_raw_data(raw_data);
     f->variables()["tied_to_file"] = (int64_t)0;
   } else {
     f->load(uri);
