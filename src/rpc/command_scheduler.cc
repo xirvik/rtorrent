@@ -65,14 +65,20 @@ CommandScheduler::call_item(value_type item) {
   // Remove the item before calling the command if it should be
   // removed.
 
+  std::string     key     = item->key();
+  torrent::Object command = item->command();
+
   try {
-    rpc::call_object(item->command());
+    rpc::call_object(command);
 
   } catch (torrent::input_error& e) {
     if (m_slotErrorMessage != nullptr)
-      m_slotErrorMessage("Scheduled command failed: " + item->key() + ": " +
-                         e.what());
+      m_slotErrorMessage("Scheduled command failed: " + key + ": " + e.what());
   }
+
+  // The command is allowed to erase or replace this item, which deletes it.
+  if (std::find(begin(), end(), item) == end())
+    return;
 
   // Still schedule if we caught a torrrent::input_error?
   torrent::utils::timer next = item->next_time_scheduled();
