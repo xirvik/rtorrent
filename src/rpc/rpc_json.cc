@@ -22,6 +22,7 @@
 #include "rpc/command.h"
 #include "rpc/command_map.h"
 #include "rpc/parse_commands.h"
+#include "rpc/scgi_task.h"
 #include "thread_base.h"
 #include "utils/jsonrpc/common.h"
 
@@ -290,6 +291,18 @@ bool
 RpcJson::process(const char* inBuffer, uint32_t length, res_callback callback) {
   const std::string& response =
     m_jsonrpc->HandleRequest(std::string_view(inBuffer, length));
+
+  if (response.size() > SCgiTask::max_response_size) {
+    const std::string error =
+      json{ { "id", nullptr },
+            { "error",
+              { { "code", -32603 },
+                { "message", "response size exceeds maximum RPC limit" } } },
+            { "jsonrpc", "2.0" } }
+        .dump();
+
+    return callback(error.c_str(), error.size());
+  }
 
   return callback(response.c_str(), response.size());
 }

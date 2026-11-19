@@ -24,6 +24,7 @@ static_assert(false, "XMLRPC is too old");
 #include <torrent/utils/string_manip.h>
 
 #include "rpc/parse_commands.h"
+#include "rpc/scgi_task.h"
 
 #include "rpc/command.h"
 
@@ -595,6 +596,25 @@ RpcXml::process(const char* inBuffer, uint32_t length, res_callback callback) {
 
   if (localEnv.fault_occurred && localEnv.fault_code == XMLRPC_INTERNAL_ERROR)
     throw torrent::internal_error("Internal error in XMLRPC.");
+
+  if (xmlrpc_mem_block_size(memblock) > SCgiTask::max_response_size) {
+    xmlrpc_mem_block_free(memblock);
+    xmlrpc_env_clean(&localEnv);
+    xmlrpc_env_init(&localEnv);
+
+    xmlrpc_env fault;
+    xmlrpc_env_init(&fault);
+    xmlrpc_env_set_fault(&fault,
+                         XMLRPC_LIMIT_EXCEEDED_ERROR,
+                         "Response size exceeds maximum XML-RPC limit");
+
+    memblock = xmlrpc_mem_block_new(&localEnv, 0);
+    xmlrpc_serialize_fault(&localEnv, memblock, &fault);
+    xmlrpc_env_clean(&fault);
+
+    if (localEnv.fault_occurred)
+      throw torrent::internal_error("Internal error in XMLRPC.");
+  }
 
   bool result = callback((const char*)xmlrpc_mem_block_contents(memblock),
                          xmlrpc_mem_block_size(memblock));

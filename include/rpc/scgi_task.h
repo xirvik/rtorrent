@@ -20,6 +20,8 @@ public:
   static constexpr int          max_header_size     = 2000;
   static constexpr int          max_content_size    = (1 << 26);
 
+  static constexpr uint32_t max_response_size = (100 << 20);
+
   enum ContentType { XML, JSON };
 
   SCgiTask() {
