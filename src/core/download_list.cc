@@ -66,9 +66,8 @@ DownloadList::clear() {
 
 void
 DownloadList::session_save() {
-  unsigned int c = std::count_if(begin(), end(), [](Download* download) {
-    return control->core()->download_store()->save_resume(download);
-  });
+  unsigned int c = control->core()->download_store()->save_resume_all(
+    std::vector<Download*>(begin(), end()));
 
   if (c != size())
     lt_log_print(torrent::LOG_ERROR, "Failed to save session torrents.");

@@ -5,6 +5,7 @@
 #define RTORRENT_CORE_DOWNLOAD_STORE_H
 
 #include <string>
+#include <vector>
 
 #include "utils/lockfile.h"
 
@@ -41,6 +42,9 @@ public:
   }
   void remove(Download* d);
 
+  // Returns the number of downloads whose resume files were replaced.
+  unsigned int save_resume_all(const std::vector<Download*>& downloads);
+
   // Currently shows all entries in the correct format.
   utils::Directory get_formated_entries();
 
@@ -49,9 +53,16 @@ public:
 private:
   std::string create_filename(Download* d);
 
+  std::string prepare_save(Download* d);
+  bool        write_resume_files(Download*          d,
+                                 const std::string& base_filename,
+                                 bool               sync);
+  bool        rename_resume_files(const std::string& base_filename);
+
   bool write_bencode(const std::string&     filename,
                      const torrent::Object& obj,
-                     uint32_t               skip_mask);
+                     uint32_t               skip_mask,
+                     bool                   sync);
 
   std::string     m_path;
   utils::Lockfile m_lockfile;
