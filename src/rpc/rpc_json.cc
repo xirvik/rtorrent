@@ -123,7 +123,7 @@ json_to_object(const json& value, int callType, rpc::target_type* target) {
     case json::value_t::array: {
       const auto& count = value.size();
 
-      uint8_t start = 0;
+      std::size_t start = 0;
 
       if (callType != command_base::target_generic) {
         if (count < 1) {
