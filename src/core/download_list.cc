@@ -213,6 +213,8 @@ DownloadList::erase_ptr(Download* download) {
 
 DownloadList::iterator
 DownloadList::erase(iterator itr) {
+  View::check_unlocked();
+
   if (itr == end())
     throw torrent::internal_error(
       "DownloadList::erase(...) could not find download.");
@@ -301,6 +303,9 @@ DownloadList::close(Download* download) {
 
 void
 DownloadList::close_directly(Download* download) {
+  // Closing the files would invalidate a running filter or sort.
+  View::check_unlocked();
+
   lt_log_print_info(torrent::LOG_TORRENT_INFO,
                     download->info(),
                     "download_list",

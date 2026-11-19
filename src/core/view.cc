@@ -16,6 +16,18 @@
 
 namespace core {
 
+// Held while a filter or sort command runs, see View::check_unlocked().
+static unsigned int view_lock_count = 0;
+
+struct view_lock {
+  view_lock() {
+    view_lock_count++;
+  }
+  ~view_lock() {
+    view_lock_count--;
+  }
+};
+
 // Also add focus thingie here?
 struct view_downloads_compare {
   view_downloads_compare(const torrent::Object& cmd)
@@ -25,6 +37,8 @@ struct view_downloads_compare {
     try {
       if (m_command.is_empty())
         return false;
+
+      view_lock lock;
 
       if (!m_command.is_dict_key())
         return rpc::parse_command_single(rpc::make_target_pair(d1, d2),
@@ -74,6 +88,7 @@ struct view_downloads_filter {
       return true;
 
     try {
+      view_lock lock;
       torrent::Object result;
 
       if (cmd.is_dict_key()) {
@@ -191,7 +206,16 @@ View::erase(Download* download) {
 }
 
 void
+View::check_unlocked() {
+  if (view_lock_count != 0)
+    throw torrent::input_error(
+      "View filter and sort commands cannot change views or downloads.");
+}
+
+void
 View::set_visible(Download* download) {
+  check_unlocked();
+
   iterator itr = std::find(begin_filtered(), end_filtered(), download);
 
   if (itr == end_filtered())
@@ -207,6 +231,8 @@ View::set_visible(Download* download) {
 
 void
 View::set_not_visible(Download* download) {
+  check_unlocked();
+
   iterator itr = std::find(begin_visible(), end_visible(), download);
 
   if (itr == end_visible())
@@ -243,6 +269,8 @@ View::prev_focus() {
 
 void
 View::sort() {
+  check_unlocked();
+
   if (m_sortCurrent.is_empty()) {
     return;
   }
@@ -259,6 +287,8 @@ View::sort() {
 
 void
 View::filter() {
+  check_unlocked();
+
   // Do NOT allow filter STARTED and STOPPED views: they are special
   if (m_name == "started" || m_name == "stopped")
     return;
@@ -323,6 +353,8 @@ View::filter_by(const torrent::Object& condition, View::base_type& result) {
 
 void
 View::filter_download(core::Download* download) {
+  check_unlocked();
+
   iterator itr = std::find(base_type::end() - 1, base_type::end(), download);
 
   if (itr == base_type::end()) {

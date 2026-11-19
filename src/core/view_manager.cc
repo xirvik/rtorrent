@@ -28,6 +28,8 @@ ViewManager::clear() {
 
 ViewManager::iterator
 ViewManager::insert(const std::string& name) {
+  View::check_unlocked();
+
   if (name.empty())
     throw torrent::input_error("View with empty name not supported.");
 
