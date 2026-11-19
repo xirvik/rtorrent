@@ -16,6 +16,7 @@
 #include "control.h"
 #include "core/download.h"
 #include "core/manager.h"
+#include "core/view.h"
 
 namespace core {
 
@@ -126,6 +127,8 @@ Download::set_throttle_name(const std::string& throttleName) {
 
 void
 Download::set_root_directory(const std::string& path) {
+  View::check_unlocked();
+
   // If the download is open, hashed and has completed chunks make
   // sure to verify that the download files are still present.
   //

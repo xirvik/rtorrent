@@ -266,6 +266,7 @@ DownloadList::open(Download* download) {
 
 void
 DownloadList::open_throw(Download* download) {
+  View::check_unlocked();
   check_contains(download);
 
   lt_log_print_info(torrent::LOG_TORRENT_INFO,
