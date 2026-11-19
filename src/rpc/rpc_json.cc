@@ -272,6 +272,85 @@ jsonrpc_call_command(const std::string& method, const json& params) {
   }
 }
 
+namespace {
+
+constexpr uint32_t max_json_depth = 1024;
+
+class json_depth_check final : public nlohmann::json_sax<json> {
+public:
+  bool null() override {
+    return true;
+  }
+  bool boolean(bool) override {
+    return true;
+  }
+  bool number_integer(number_integer_t) override {
+    return true;
+  }
+  bool number_unsigned(number_unsigned_t) override {
+    return true;
+  }
+  bool number_float(number_float_t, const string_t&) override {
+    return true;
+  }
+  bool string(string_t&) override {
+    return true;
+  }
+  bool binary(binary_t&) override {
+    return true;
+  }
+  bool key(string_t&) override {
+    return true;
+  }
+  bool start_object(std::size_t) override {
+    return enter();
+  }
+  bool end_object() override {
+    m_depth--;
+    return true;
+  }
+  bool start_array(std::size_t) override {
+    return enter();
+  }
+  bool end_array() override {
+    m_depth--;
+    return true;
+  }
+  bool parse_error(std::size_t,
+                   const std::string&,
+                   const nlohmann::detail::exception&) override {
+    return false;
+  }
+
+  bool exceeded() const {
+    return m_exceeded;
+  }
+
+private:
+  bool enter() {
+    if (++m_depth <= max_json_depth)
+      return true;
+
+    m_exceeded = true;
+    return false;
+  }
+
+  uint32_t m_depth{ 0 };
+  bool     m_exceeded{ false };
+};
+
+std::string
+json_request_error(const char* message) {
+  return json{ { "id", nullptr },
+               { "error", { { "code", -32600 }, { "message", message } } },
+               { "jsonrpc", "2.0" } }
+    .dump();
+}
+
+}
+
+uint64_t RpcJson::m_size_limit = SCgiTask::max_content_size;
+
 void
 RpcJson::initialize() {
   m_jsonrpc = new jsonrpccxx::JsonRpc2Server(&jsonrpc_call_command);
@@ -289,6 +368,21 @@ RpcJson::is_valid() const {
 
 bool
 RpcJson::process(const char* inBuffer, uint32_t length, res_callback callback) {
+  if (length > m_size_limit) {
+    const std::string error =
+      json_request_error("content size exceeds maximum RPC limit");
+    return callback(error.c_str(), error.size());
+  }
+
+  json_depth_check depth_check;
+  json::sax_parse(inBuffer, inBuffer + length, &depth_check);
+
+  if (depth_check.exceeded()) {
+    const std::string error =
+      json_request_error("maximum nesting depth exceeded");
+    return callback(error.c_str(), error.size());
+  }
+
   const std::string& response =
     m_jsonrpc->HandleRequest(std::string_view(inBuffer, length));
 

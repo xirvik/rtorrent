@@ -6,6 +6,7 @@
 
 #include "buildinfo.h"
 
+#include <cstdint>
 #include <functional>
 
 #ifdef HAVE_JSON
@@ -31,7 +32,13 @@ public:
 
   void insert_command(const char*, const char*, const char*) override {}
 
+  static void set_size_limit(uint64_t size) {
+    m_size_limit = size;
+  }
+
 private:
+  static uint64_t m_size_limit;
+
   jsonrpccxx::JsonRpc2Server* m_jsonrpc;
 #endif
 };

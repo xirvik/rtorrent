@@ -24,6 +24,7 @@
 #include "core/download.h"
 #include "core/manager.h"
 #include "rpc/parse.h"
+#include "rpc/rpc_json.h"
 #include "rpc/rpc_xml.h"
 #include "rpc/parse_commands.h"
 #include "rpc/scgi.h"
@@ -396,6 +397,9 @@ initialize_command_network() {
   });
   CMD2_ANY_VALUE_V("network.xmlrpc.size_limit.set", [](const auto&, const auto& value) {
     rpc::RpcXml::set_size_limit(value);
+#ifdef HAVE_JSON
+    rpc::RpcJson::set_size_limit(value);
+#endif
   });
 
   CMD2_REDIRECT_GENERIC("network.xmlrpc.dialect.set", "true");
