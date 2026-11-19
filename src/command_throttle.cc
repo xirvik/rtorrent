@@ -109,6 +109,15 @@ apply_throttle(const torrent::Object::list_type& args, bool up) {
   return torrent::Object();
 }
 
+static unsigned int
+throttle_rate_to_kb(int64_t rate) {
+  if (rate < 0 || rate > std::numeric_limits<unsigned int>::max() - 1)
+    throw torrent::input_error(
+      "Throttle rate must be between 0 and 4294967294.");
+
+  return static_cast<unsigned int>(rate >> 10);
+}
+
 static constexpr int throttle_info_up   = (1 << 0);
 static constexpr int throttle_info_down = (1 << 1);
 static constexpr int throttle_info_max  = (1 << 2);
@@ -232,11 +241,13 @@ initialize_command_throttle() {
   });
   CMD2_ANY_VALUE_V("throttle.global_up.max_rate.set",
                    [](const auto&, const auto& throttle) {
-                     return control->ui()->set_up_throttle_i64(throttle);
+                     return control->ui()->set_up_throttle(
+                       throttle_rate_to_kb(throttle));
                    });
   CMD2_ANY_VALUE_KB("throttle.global_up.max_rate.set_kb",
                     [](const auto&, const auto& throttle) {
-                      return control->ui()->set_up_throttle_i64(throttle);
+                      return control->ui()->set_up_throttle(
+                        throttle_rate_to_kb(throttle));
                     });
   CMD2_ANY("throttle.global_down.rate", [](const auto&, const auto&) {
     return torrent::down_rate()->rate();
@@ -251,11 +262,13 @@ initialize_command_throttle() {
            });
   CMD2_ANY_VALUE_V("throttle.global_down.max_rate.set",
                    [](const auto&, const auto& throttle) {
-                     return control->ui()->set_down_throttle_i64(throttle);
+                     return control->ui()->set_down_throttle(
+                       throttle_rate_to_kb(throttle));
                    });
   CMD2_ANY_VALUE_KB("throttle.global_down.max_rate.set_kb",
                     [](const auto&, const auto& throttle) {
-                      return control->ui()->set_down_throttle_i64(throttle);
+                      return control->ui()->set_down_throttle(
+                        throttle_rate_to_kb(throttle));
                     });
 
   // Temporary names, need to change this to accept real rates rather
