@@ -68,9 +68,16 @@ xmlrpc_list_entry_to_object(xmlrpc_env* env, xmlrpc_value* src, int index) {
     throw xmlrpc_error(env);
   }
 
-  torrent::Object obj = xmlrpc_to_object(env, tmp);
-  xmlrpc_DECREF(tmp);
+  torrent::Object obj;
 
+  try {
+    obj = xmlrpc_to_object(env, tmp);
+  } catch (...) {
+    xmlrpc_DECREF(tmp);
+    throw;
+  }
+
+  xmlrpc_DECREF(tmp);
   return obj;
 }
 
@@ -358,7 +365,13 @@ xmlrpc_to_object(xmlrpc_env*       env,
           throw xmlrpc_error(env);
         }
 
-        *target = xmlrpc_to_target(env, tmp);
+        try {
+          *target = xmlrpc_to_target(env, tmp);
+        } catch (...) {
+          xmlrpc_DECREF(tmp);
+          throw;
+        }
+
         xmlrpc_DECREF(tmp);
 
         if (env->fault_occurred)
