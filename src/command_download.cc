@@ -507,9 +507,12 @@ p_multicall(core::Download* download, const torrent::Object::list_type& args) {
   torrent::Object             resultRaw = torrent::Object::create_list();
   torrent::Object::list_type& result    = resultRaw.as_list();
 
+  auto*      connection_list = download->connection_list();
+  const auto list_size       = connection_list->size();
+
   for (torrent::ConnectionList::const_iterator
-         itr  = download->connection_list()->begin(),
-         last = download->connection_list()->end();
+         itr  = connection_list->begin(),
+         last = connection_list->end();
        itr != last;
        itr++) {
     torrent::Object::list_type& row =
@@ -524,6 +527,12 @@ p_multicall(core::Download* download, const torrent::Object::list_type& args) {
                                        cmd.c_str(),
                                        cmd.c_str() + cmd.size())
                       .first);
+
+      // Erasing a peer frees it and moves the last element into its place,
+      // so neither this peer nor the iteration survives a change to the list.
+      if (connection_list->size() != list_size)
+        throw torrent::input_error(
+          "Command changed the connection list during p.multicall.");
     }
   }
 
