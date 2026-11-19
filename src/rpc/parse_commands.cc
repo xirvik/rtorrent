@@ -3,10 +3,12 @@
 
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <string>
 #include <torrent/exceptions.h>
 #include <torrent/utils/path.h>
 
+#include "core/download.h"
 #include "rpc/parse.h"
 #include "rpc/parse_commands.h"
 
@@ -173,13 +175,32 @@ parse_command(target_type target, const char* first, const char* last) {
   return std::make_pair(commands.call_command(key, args, target), first);
 }
 
+// A command may erase the download it was called on, which must then not be
+// passed to the commands after it. The check throws once that happened.
+static std::function<void()>
+erased_download_check(target_type target) {
+  if (std::get<0>(target) != command_base::target_download ||
+      std::get<1>(target) == nullptr)
+    return [] {};
+
+  return [lifetime =
+            static_cast<core::Download*>(std::get<1>(target))->lifetime()] {
+    if (lifetime.expired())
+      throw torrent::input_error(
+        "The download was erased by an earlier command.");
+  };
+}
+
 torrent::Object
 parse_command_multiple(target_type target,
                        const char* first,
                        const char* last) {
   parse_command_type result;
+  auto               throw_if_erased = erased_download_check(target);
 
   while (first != last) {
+    throw_if_erased();
+
     // Should we check the return value? Probably not necessary as
     // parse_args throws on unquoted multi-word input.
     result = parse_command(target, first, last);
@@ -269,21 +290,28 @@ call_object(const torrent::Object& command, target_type target) {
 
     case torrent::Object::TYPE_LIST: {
       torrent::Object result;
+      auto            throw_if_erased = erased_download_check(target);
 
       for (torrent::Object::list_const_iterator itr = command.as_list().begin(),
                                                 last = command.as_list().end();
            itr != last;
-           itr++)
+           itr++) {
+        throw_if_erased();
         result = call_object(*itr, target);
+      }
 
       return result;
     }
     case torrent::Object::TYPE_MAP: {
+      auto throw_if_erased = erased_download_check(target);
+
       for (torrent::Object::map_const_iterator itr  = command.as_map().begin(),
                                                last = command.as_map().end();
            itr != last;
-           itr++)
+           itr++) {
+        throw_if_erased();
         call_object(itr->second, target);
+      }
 
       return torrent::Object();
     }

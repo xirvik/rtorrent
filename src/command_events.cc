@@ -335,6 +335,13 @@ d_multicall(const torrent::Object::list_type& args) {
 
   std::copy((*viewItr)->begin_visible(), (*viewItr)->end_visible(), dlist);
 
+  // A command may erase any download in the copy, which deletes it.
+  std::vector<std::weak_ptr<void>> lifetimes;
+  lifetimes.reserve(dlist_size);
+
+  for (size_t i = 0; i < dlist_size; ++i)
+    lifetimes.push_back(dlist[i]->lifetime());
+
   auto  resultRaw = torrent::Object::create_list();
   auto& result    = resultRaw.as_list();
 
@@ -346,6 +353,9 @@ d_multicall(const torrent::Object::list_type& args) {
     row.reserve(parsed.size());
 
     for (const auto& [cmd, cmd_args] : parsed) {
+      if (lifetimes[i].expired())
+        break;
+
       row.push_back(
         rpc::parse_command_(rpc::make_target(dlist[i]), cmd, cmd_args));
     }
@@ -376,12 +386,24 @@ d_multicall_filtered(const torrent::Object::list_type& args) {
   core::View::base_type dlist;
   (*viewItr)->filter_by(*++arg, dlist);
 
+  // A command may erase any download in the copy, which deletes it.
+  std::vector<std::weak_ptr<void>> lifetimes;
+  lifetimes.reserve(dlist.size());
+
+  for (const auto& item : dlist)
+    lifetimes.push_back(item->lifetime());
+
   // Generate result by iterating over all items
   torrent::Object             resultRaw = torrent::Object::create_list();
   torrent::Object::list_type& result    = resultRaw.as_list();
   ++arg; // skip to first command
 
-  for (core::View::iterator item = dlist.begin(); item != dlist.end(); ++item) {
+  for (size_t i = 0; i < dlist.size(); ++i) {
+    if (lifetimes[i].expired())
+      continue;
+
+    core::View::iterator item = dlist.begin() + i;
+
     // Add empty row to result
     torrent::Object::list_type& row =
       result.insert(result.end(), torrent::Object::create_list())->as_list();
@@ -390,6 +412,9 @@ d_multicall_filtered(const torrent::Object::list_type& args) {
     for (torrent::Object::list_const_iterator command = arg;
          command != args.end();
          command++) {
+      if (lifetimes[i].expired())
+        break;
+
       const std::string& cmdstr = command->as_string();
       row.push_back(rpc::parse_command(rpc::make_target(*item),
                                        cmdstr.c_str(),
