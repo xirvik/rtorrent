@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Copyright (C) 2005-2011, Jari Sundell <jaris@ifi.uio.no>
 
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <locale>
@@ -119,10 +120,40 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
     throw torrent::input_error(
       "Command::string_to_value_unit(...) received unit <= 0.");
 
-  char* last;
+  if (base != 0 && base != 8 && base != 10 && base != 16)
+    throw torrent::input_error(
+      "Command::string_to_value_unit(...) received invalid base.");
+
+  const char* first = src;
+
+  while (parse_is_space(*src))
+    src++;
+
+  if (src[0] == '+')
+    return first;
+
+  if (src[0] == '-') {
+    if (base == 8 || base == 16)
+      return first;
+
+    if (src[1] == '0')
+      return first;
+  }
+
+  if (base == 10 && src[0] == '0' && (src[1] >= '0' && src[1] <= '9'))
+    return first;
+
+  char* last{};
+
+  errno  = 0;
   *value = strtoll(src, &last, base);
 
+  if (errno == ERANGE)
+    return first;
+
   if (last == src) {
+    *value = 0;
+
     if (strcasecmp(src, "no") == 0) {
       *value = 0;
       return src + strlen("no");
@@ -140,7 +171,7 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
       return src + strlen("false");
     }
 
-    return src;
+    return first;
   }
 
   switch (*last) {
@@ -151,21 +182,21 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
     case 'k':
     case 'K':
       if (!value_fits_shifted(*value, 10))
-        return src;
+        return first;
       *value = *value << 10;
       ++last;
       break;
     case 'm':
     case 'M':
       if (!value_fits_shifted(*value, 20))
-        return src;
+        return first;
       *value = *value << 20;
       ++last;
       break;
     case 'g':
     case 'G':
       if (!value_fits_shifted(*value, 30))
-        return src;
+        return first;
       *value = *value << 30;
       ++last;
       break;
@@ -176,7 +207,7 @@ parse_value_nothrow(const char* src, int64_t* value, int base, int unit) {
       if (unit != 0 &&
           (*value > std::numeric_limits<int64_t>::max() / unit ||
            *value < std::numeric_limits<int64_t>::min() / unit))
-        return src;
+        return first;
       *value = *value * unit;
       break;
   }
