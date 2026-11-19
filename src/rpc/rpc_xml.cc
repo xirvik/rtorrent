@@ -11,6 +11,7 @@
 #include <limits>
 
 #include <stdlib.h>
+#include <string>
 #include <xmlrpc-c/server.h>
 #ifndef XMLRPC_HAVE_I8
 static_assert(false, "XMLRPC is too old");
@@ -42,12 +43,12 @@ public:
     return m_type;
   }
   const char* what() const noexcept override {
-    return m_msg;
+    return m_msg.c_str();
   }
 
 private:
   int         m_type;
-  const char* m_msg;
+  std::string m_msg;
 };
 
 torrent::Object
