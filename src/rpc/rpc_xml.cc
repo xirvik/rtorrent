@@ -654,6 +654,11 @@ RpcXml::set_size_limit(uint64_t size) {
   if (size >= (64 << 20))
     throw torrent::input_error("Invalid XMLRPC limit size.");
 
+  // A limit below the shortest useful request rejects every request, the one
+  // that would raise it again included.
+  if (size < 1024)
+    throw torrent::input_error("XMLRPC size limit is too small to hold a request.");
+
   xmlrpc_limit_set(XMLRPC_XML_SIZE_LIMIT_ID, size);
 }
 
