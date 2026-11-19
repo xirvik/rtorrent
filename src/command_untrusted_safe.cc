@@ -249,6 +249,7 @@ initialize_command_untrusted_safe() {
   rpc::rpc.mark_safe("strings.tracker_mode");
   rpc::rpc.mark_safe("system.api_version");
   rpc::rpc.mark_safe("system.client_version");
+  rpc::rpc.mark_safe("system.file.allocate");
   rpc::rpc.mark_safe("system.file.max_size");
   rpc::rpc.mark_safe("system.file.split_size");
   rpc::rpc.mark_safe("system.file.split_suffix");
